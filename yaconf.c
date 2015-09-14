@@ -89,7 +89,7 @@ static void php_yaconf_hash_init(zval *zv, size_t size) /* {{{ */ {
 	HashTable *ht;
 	PALLOC_HASHTABLE(ht);
 	zend_hash_init(ht, size, NULL, NULL, 1);
-	GC_FLAGS(ht) |= IS_ARRAY_IMMUTABLE;
+	GC_FLAGS(ht) |= IS_ARRAY;
 	ZVAL_ARR(zv, ht);
 	Z_TYPE_FLAGS_P(zv) = IS_TYPE_IMMUTABLE;
 } 
@@ -120,7 +120,7 @@ static void php_yaconf_hash_destroy(HashTable *ht) /* {{{ */ {
 } /* }}} */
 
 static void php_yaconf_hash_copy(HashTable *target, HashTable *source) /* {{{ */ {
-	zend_string *key;
+	char *key;
 	zend_long idx;
 	zval *element, rv;
 
@@ -139,7 +139,7 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 		case IS_CONSTANT:
 		case IS_STRING:
 			{
-				zend_string *str = zend_string_init(Z_STRVAL_P(zv), Z_STRLEN_P(zv), 1);
+				char *str = zend_string_init(Z_STRVAL_P(zv), Z_STRLEN_P(zv), 1);
 				GC_FLAGS(str) |= IS_STR_INTERNED | IS_STR_PERMANENT;
 				ZVAL_INTERNED_STR(rv, str);
 			}
@@ -335,7 +335,7 @@ static void php_yaconf_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 }
 /* }}} */
 
-PHPAPI zval *php_yaconf_get(zend_string *name) /* {{{ */ {
+PHPAPI zval *php_yaconf_get(char *name) /* {{{ */ {
 	if (ini_containers) {
 		zval *pzval;
 		HashTable *target = ini_containers;
@@ -367,7 +367,7 @@ PHPAPI zval *php_yaconf_get(zend_string *name) /* {{{ */ {
 }
 /* }}} */
 
-PHPAPI int php_yaconf_has(zend_string *name) /* {{{ */ {
+PHPAPI int php_yaconf_has(char *name) /* {{{ */ {
 	if (php_yaconf_get(name)) {
 		return 1;
 	}
@@ -378,7 +378,7 @@ PHPAPI int php_yaconf_has(zend_string *name) /* {{{ */ {
 /** {{{ proto public Yaconf::get(string $name, $default = NULL)
 */
 PHP_METHOD(yaconf, get) {
-	zend_string *name;
+	char *name;
 	zval *val, *defv = NULL;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|z", &name, &defv) == FAILURE) {
@@ -400,7 +400,7 @@ PHP_METHOD(yaconf, get) {
 /** {{{ proto public Yaconf::has(string $name)
 */
 PHP_METHOD(yaconf, has) {
-	zend_string *name;
+	char *name;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S", &name) == FAILURE) {
 		return;
