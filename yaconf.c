@@ -35,7 +35,7 @@ zend_class_entry *yaconf_ce;
 static void php_yaconf_zval_persistent(zval *zv, zval *rv);
 
 typedef struct _yaconf_filenode {
-	zend_string *filename;
+	char *filename;
 	time_t mtime;
 } yaconf_filenode;
 
@@ -96,7 +96,7 @@ static void php_yaconf_hash_init(zval *zv, size_t size) /* {{{ */ {
 /* }}} */
 
 static void php_yaconf_hash_destroy(HashTable *ht) /* {{{ */ {
-	zend_string *key;
+	char *key;
 	zval *element;
 
 	if (((ht)->u.flags & HASH_FLAG_INITIALIZED)) {
