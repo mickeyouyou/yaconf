@@ -141,7 +141,7 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 		case IS_CONSTANT:
 		case IS_STRING:
 			{
-				char *str = string_init(Z_STRVAL_P(zv), (int *)Z_STRLEN(zv), 1);
+				char *str = string_init(zv);
 				// todo GC_FLAGS(str) |= IS_STR_INTERNED | IS_STR_PERMANENT;
 				ZVAL_INTERNED_STR(rv, str);
 			}
@@ -599,13 +599,13 @@ PHP_RINIT_FUNCTION(yaconf)
 							}
 						}
 
-						if ((orig_ht = zend_symtable_find(ini_containers,
-										namelist[i]->d_name, p - namelist[i]->d_name, (void**)result)) != NULL) {
+						if ((orig_ht = (zval *)zend_symtable_find(ini_containers,
+										namelist[i]->d_name, p - namelist[i]->d_name, (void**)p)) != NULL) {
 							php_yaconf_hash_destroy(Z_ARRVAL_P(orig_ht));
 							ZVAL_COPY_VALUE(orig_ht, &result);
 						} else {
 							zend_symtable_update(ini_containers,
-									namelist[i]->d_name, p - namelist[i]->d_name, &result, sizeof(result), (void **) result);
+									namelist[i]->d_name, p - namelist[i]->d_name, &result, sizeof(result), (void **)orig_ht);
 						}
 
 						if (node) {
@@ -666,9 +666,9 @@ PHP_MINFO_FUNCTION(yaconf)
 	php_info_print_table_header(2, "parsed filename", "mtime");
 	if (parsed_ini_files && zend_hash_num_elements(parsed_ini_files)) {
 		yaconf_filenode *node;
-		ZEND_HASH_FOREACH_PTR(parsed_ini_files, node) {
+		ZEND_HASH_FOREACH_PTR(parsed_ini_files, node);
 			php_info_print_table_row(2, ZSTR_VAL(node->filename),  ctime(&node->mtime));
-		} ZEND_HASH_FOREACH_END();
+		ZEND_HASH_FOREACH_END();
 	}
 	php_info_print_table_end();
 
