@@ -215,7 +215,7 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 	} else if (callback_type == ZEND_INI_PARSER_POP_ENTRY) {
 		if (!(Z_STRLEN_P(key) > 1 && Z_STRVAL_P(key)[0] == '0')
 				&& is_numeric_string(Z_STRVAL_P(key), Z_STRLEN_P(key), NULL, NULL, 0) == IS_LONG) {
-			zend_long idx = (zend_long)zend_atol(Z_STRVAL_P(key), Z_STRLEN_P(key));
+			ulong idx = (ulong)zend_atol(Z_STRVAL_P(key), Z_STRLEN_P(key));
 			if ((pzval = zend_hash_index_find(Z_ARRVAL_P(arr), idx)) == NULL) {
 				php_yaconf_hash_init(&rv, 8);
 				pzval = zend_hash_index_update(Z_ARRVAL_P(arr), idx, &rv);
