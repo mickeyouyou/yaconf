@@ -89,9 +89,9 @@ static void php_yaconf_hash_init(zval *zv, size_t size) /* {{{ */ {
 	HashTable *ht;
 	PALLOC_HASHTABLE(ht);
 	zend_hash_init(ht, size, NULL, NULL, 1);
-	GC_FLAGS(ht) |= IS_ARRAY;
+	//GC_FLAGS(ht) |= IS_ARRAY_IMMUTABLE;
 	ZVAL_ARR(zv, ht);
-	Z_TYPE_FLAGS_P(zv) = IS_TYPE_IMMUTABLE;
+	//Z_TYPE_FLAGS_P(zv) = IS_TYPE_IMMUTABLE;
 } 
 /* }}} */
 
@@ -99,39 +99,41 @@ static void php_yaconf_hash_destroy(HashTable *ht) /* {{{ */ {
 	char *key;
 	zval *element;
 
-	if (((ht)->u.flags & HASH_FLAG_INITIALIZED)) {
-		ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, element) {
-			if (key) {
-				free(key);
-			}
-			switch (Z_TYPE_P(element)) {
-				case IS_PTR:
-				case IS_STRING:
-					free(Z_PTR_P(element));
-					break;
-				case IS_ARRAY:
-					php_yaconf_hash_destroy(Z_ARRVAL_P(element));
-					break;
-			}
-		} ZEND_HASH_FOREACH_END();
-		free(HT_GET_DATA_ADDR(ht));
+	if ((ht)) {
+		ZEND_DO_FOREACH_BEGIN(ht, key, element); 
+		if (key) {
+			free(key);
+		}
+		
+		switch (Z_TYPE_P(element)) {
+			case IS_STRING:
+				free(element);
+				break;
+			case IS_ARRAY:
+				php_yaconf_hash_destroy(Z_ARRVAL_P(element));
+				break;
+		}
+		
+		ZEND_DOFOREACH_END();
+		//free(HT_GET_DATA_ADDR(ht));
+		free(ht);
 	}
 	free(ht);
 } /* }}} */
 
 static void php_yaconf_hash_copy(HashTable *target, HashTable *source) /* {{{ */ {
 	char *key;
-	zend_long idx;
+	ulong idx;
 	zval *element, rv;
 
-	ZEND_HASH_FOREACH_KEY_VAL(source, idx, key, element) {
+	ZEND_DO_FOREACH_BEGIN(source, idx, key, element);
 		php_yaconf_zval_persistent(element, &rv);
 		if (key) {
 			zend_hash_str_update(target, ZSTR_VAL(key), ZSTR_LEN(key), &rv);
 		} else {
-			zend_hash_index_update(target, idx, &rv);
+			zend_hash_index_update(target, idx, &rv, ZSTR_LEN(element), (void **)element);
 		}
-	} ZEND_HASH_FOREACH_END();
+	ZEND_DOFOREACH_END();
 } /* }}} */
 
 static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
@@ -139,8 +141,8 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 		case IS_CONSTANT:
 		case IS_STRING:
 			{
-				char *str = zend_string_init(Z_STRVAL_P(zv), Z_STRLEN_P(zv), 1);
-				GC_FLAGS(str) |= IS_STR_INTERNED | IS_STR_PERMANENT;
+				char *str = string_init(Z_STRVAL_P(zv), (int *)Z_STRLEN(zv), 1);
+				// todo GC_FLAGS(str) |= IS_STR_INTERNED | IS_STR_PERMANENT;
 				ZVAL_INTERNED_STR(rv, str);
 			}
 			break;
@@ -152,7 +154,6 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 			break;
 		case IS_RESOURCE:
 		case IS_OBJECT:
-		case _IS_BOOL:
 		case IS_LONG:
 		case IS_NULL:
 			ZEND_ASSERT(0);
