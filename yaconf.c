@@ -90,8 +90,8 @@ static void php_yaconf_hash_init(zval *zv, size_t size) /* {{{ */ {
 	PALLOC_HASHTABLE(ht);
 	zend_hash_init(ht, size, NULL, NULL, 1);
 	//GC_FLAGS(ht) |= IS_ARRAY_IMMUTABLE;
-	ZVAL_ARR(zv, ht);
-	//Z_TYPE_FLAGS_P(zv) = IS_TYPE_IMMUTABLE;
+	array_init(zv);
+	Z_TYPE_P(zv) = IS_ARRAY;
 } 
 /* }}} */
 
@@ -114,7 +114,7 @@ static void php_yaconf_hash_destroy(HashTable *ht) /* {{{ */ {
 				break;
 		}
 		
-		ZEND_DOFOREACH_END();
+		ZEND_DO_FOREACH_END();
 		//free(HT_GET_DATA_ADDR(ht));
 		free(ht);
 	}
@@ -141,7 +141,8 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 		case IS_CONSTANT:
 		case IS_STRING:
 			{
-				char *str = string_init(zv);
+				char *str;
+				ZVAL_STRING(zv, str, 1);
 				// todo GC_FLAGS(str) |= IS_STR_INTERNED | IS_STR_PERMANENT;
 				ZVAL_INTERNED_STR(rv, str);
 			}
@@ -326,7 +327,7 @@ static void php_yaconf_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 		efree(skey);
 	} else if (value) {
 		zval *active_arr;
-		if (!Z_ISUNDEF(active_ini_file_section)) {
+		if (Z_TYPE_P(&active_ini_file_section) != IS_NULL) {
 			active_arr = &active_ini_file_section;
 		} else {
 			active_arr = arr;
@@ -491,7 +492,7 @@ PHP_MINIT_FUNCTION(yaconf)
 						if ((fh.handle.fp = VCWD_FOPEN(ini_file, "r"))) {
 							fh.filename = ini_file;
 							fh.type = ZEND_HANDLE_FP;
-				            ZVAL_UNDEF(&active_ini_file_section);
+				            //ZVAL_UNDEF(&active_ini_file_section);
 							YACONF_G(parse_err) = 0;
 							php_yaconf_hash_init(&result, 128);
 							if (zend_parse_ini_file(&fh, 0, 0 /* ZEND_INI_SCANNER_NORMAL */,
@@ -584,7 +585,7 @@ PHP_RINIT_FUNCTION(yaconf)
 						if ((fh.handle.fp = VCWD_FOPEN(ini_file, "r"))) {
 							fh.filename = ini_file;
 							fh.type = ZEND_HANDLE_FP;
-							ZVAL_UNDEF(&active_ini_file_section);
+							//ZVAL_UNDEF(&active_ini_file_section);
 							YACONF_G(parse_err) = 0;
 							php_yaconf_hash_init(&result, 128);
 							if (zend_parse_ini_file(&fh, 0, 0 /* ZEND_INI_SCANNER_NORMAL */,
