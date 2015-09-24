@@ -187,7 +187,7 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 				if (zend_symtable_find(Z_ARRVAL_P(target), real_key, strlen(real_key), (void **)&pzval) == FAILURE) {
 					if (seg) {
 						php_yaconf_hash_init(&rv, 8);
-						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)pazval);
+						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)pzval);
 					} else {
 						php_yaconf_zval_persistent(value, &rv);
 						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), NULL);
