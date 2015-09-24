@@ -184,7 +184,7 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 					return;
 				}
 				seg = php_strtok_r(NULL, ".", &ptr);
-				if ((pzval = (zval *)zend_symtable_find(Z_ARRVAL_P(target), real_key, strlen(real_key), (void **)value)) == NULL) {
+				if (zend_symtable_find(Z_ARRVAL_P(target), real_key, strlen(real_key), (void **)&pzval) == FAILURE) {
 					if (seg) {
 						php_yaconf_hash_init(&rv, 8);
 						pzval = (zval *)zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)value);
@@ -235,7 +235,7 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 						efree(skey);
 						return;
 					}
-					if ((pzval = (zval *)zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)value)) == NULL) {
+					if (zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)value) == FAILURE) {
 						php_yaconf_hash_init(&rv, 8);
 						pzval = (zval *)zend_symtable_update(Z_ARRVAL_P(target), seg, strlen(seg), &rv, sizeof(rv), (void **)value);
 					}
@@ -243,7 +243,7 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 					seg = php_strtok_r(NULL, ".", &ptr);
 				} while (seg);
 			} else {
-				if ((pzval = (zval *)zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)value)) == NULL) {
+				if (zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)value) == FAILURE) {
 					php_yaconf_hash_init(&rv, 8);
 					pzval = (zval *) zend_symtable_update(Z_ARRVAL_P(target), seg, strlen(seg), &rv, sizeof(rv), (void **)value);
 				} 
@@ -302,7 +302,7 @@ static void php_yaconf_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 					while (*(section) == ' ' || *(section) == ':') {
 						*(section++) = '\0';
 					}
-					if ((parent = (zval *)zend_symtable_find(Z_ARRVAL_P(arr), section, strlen(section), (void **)section))) { // todo test  last param
+					if (zend_symtable_find(Z_ARRVAL_P(arr), section, strlen(section), (void **)&parent) == SUCCESS) {
 						php_yaconf_hash_copy(Z_ARRVAL(active_ini_file_section), Z_ARRVAL_P(parent));
 					}
 				} while ((section = strrchr(seg, ':')));
@@ -314,7 +314,7 @@ static void php_yaconf_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 				*(section--) = '\0';
 			}
 
-			if ((parent = (zval *) zend_symtable_find(Z_ARRVAL_P(arr), seg, strlen(seg), (void **)seg))) { // todo test last param
+			if (zend_symtable_find(Z_ARRVAL_P(arr), seg, strlen(seg), (void **)parent) == SUCCESS) {
 				php_yaconf_hash_copy(Z_ARRVAL(active_ini_file_section), Z_ARRVAL_P(parent));
 			}
 		} 
@@ -347,7 +347,7 @@ PHPAPI zval *php_yaconf_get(char *name) /* {{{ */ {
 			entry = estrndup((const char *)ZSTR_VAL(name), ZSTR_LEN(name));
 			if ((seg = php_strtok_r(entry, ".", &ptr))) {
 				do {
-					if (target == NULL || (pzval = (zval *)zend_symtable_find(target, seg, strlen(seg), (void **)entry)) == NULL) {
+					if (target == NULL || zend_symtable_find(target, seg, strlen(seg), NULL) == FAILURE) {
 						efree(entry);
 						return NULL;
 					}
@@ -360,7 +360,7 @@ PHPAPI zval *php_yaconf_get(char *name) /* {{{ */ {
 			}
 			efree(entry);
 		} else {
-			pzval = (zval *) zend_symtable_find(target, name, strlen(name), (void **)target);
+			zend_symtable_find(target, name, strlen(name), (void **)&pzval);
 		}
 
 		return pzval;
@@ -383,7 +383,7 @@ PHP_METHOD(yaconf, get) {
 	char *name;
 	zval *val, *defv = NULL;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "S|z", &name, &defv) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s|z", &name, &defv) == FAILURE) {
 		return;
 	} 
 
@@ -600,8 +600,8 @@ PHP_RINIT_FUNCTION(yaconf)
 							}
 						}
 
-						if ((orig_ht = (zval *)zend_symtable_find(ini_containers,
-										namelist[i]->d_name, p - namelist[i]->d_name, (void**)p)) != NULL) {
+						if (zend_symtable_find(ini_containers,
+                                               namelist[i]->d_name, p - namelist[i]->d_name, (void**)&orig_ht) == SUCCESS) {
 							php_yaconf_hash_destroy(Z_ARRVAL_P(orig_ht));
 							ZVAL_COPY_VALUE(orig_ht, &result);
 						} else {
