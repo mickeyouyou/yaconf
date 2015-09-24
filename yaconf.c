@@ -131,7 +131,7 @@ static void php_yaconf_hash_copy(HashTable *target, HashTable *source) /* {{{ */
 		if (key) {
 			zend_hash_str_update(target, ZSTR_VAL(key), ZSTR_LEN(key), &rv);
 		} else {
-			zend_hash_index_update(target, idx, &rv, ZSTR_LEN(element), (void **)element);
+			zend_hash_index_update(target, idx, &rv, sizeof(rv), NULL);
 		}
 	ZEND_DOFOREACH_END();
 } /* }}} */
@@ -217,9 +217,9 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 		if (!(Z_STRLEN_P(key) > 1 && Z_STRVAL_P(key)[0] == '0')
 				&& is_numeric_string(Z_STRVAL_P(key), Z_STRLEN_P(key), NULL, NULL, 0) == IS_LONG) {
 			ulong idx = (ulong)zend_atol(Z_STRVAL_P(key), Z_STRLEN_P(key));
-			if ((pzval = (zval *)zend_hash_index_find(Z_ARRVAL_P(arr), idx, (void **)value)) == NULL) { // todo test
+			if (zend_hash_index_find(Z_ARRVAL_P(arr), idx, (void **)pzval) == FAILURE) {
 				php_yaconf_hash_init(&rv, 8);
-				pzval = (zval *)zend_hash_index_update(Z_ARRVAL_P(arr), idx, &rv, sizeof(rv), (void **)value); // todo test last two params
+				zend_hash_index_update(Z_ARRVAL_P(arr), idx, &rv, sizeof(rv), (void **)pzval);
 			} 
 		} else {
 			char *seg, *ptr;
