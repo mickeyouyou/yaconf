@@ -141,9 +141,9 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 		case IS_CONSTANT:
 		case IS_STRING:
 			{
-				char *str;
+                char *str;
+                MAKE_STD_ZVAL(zv);
 				ZVAL_STRING(zv, str, 1);
-				// todo GC_FLAGS(str) |= IS_STR_INTERNED | IS_STR_PERMANENT;
 				ZVAL_INTERNED_STR(rv, str);
 			}
 			break;
