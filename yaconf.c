@@ -141,9 +141,8 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 		case IS_CONSTANT:
 		case IS_STRING:
 			{
-                char *str;
-                MAKE_STD_ZVAL(zv);
-				ZVAL_STRING(zv, str, 1);
+                zval *str;
+                str = (zval *)pemalloc(sizeof(zv), 1);
 				ZVAL_INTERNED_STR(rv, str);
 			}
 			break;
