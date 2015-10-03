@@ -100,7 +100,7 @@ static void php_yaconf_hash_destroy(HashTable *ht) /* {{{ */ {
 	zval *element;
 
 	if ((ht)) {
-		ZEND_DO_FOREACH_BEGIN(ht, key, element); 
+        ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, element);
 		if (key) {
 			free(key);
 		}
@@ -112,9 +112,7 @@ static void php_yaconf_hash_destroy(HashTable *ht) /* {{{ */ {
 			case IS_ARRAY:
 				php_yaconf_hash_destroy(Z_ARRVAL_P(element));
 				break;
-		}
-		
-		ZEND_DO_FOREACH_END();
+		}ZEND_HASH_FOREACH_END();
 		//free(HT_GET_DATA_ADDR(ht));
 		free(ht);
 	}
@@ -126,14 +124,14 @@ static void php_yaconf_hash_copy(HashTable *target, HashTable *source) /* {{{ */
 	ulong idx;
 	zval *element, rv;
 
-	ZEND_DO_FOREACH_BEGIN(source, idx, key, element);
-		php_yaconf_zval_persistent(element, &rv);
-		if (key) {
-			zend_hash_str_update(target, ZSTR_VAL(key), ZSTR_LEN(key), &rv);
-		} else {
-			zend_hash_index_update(target, idx, &rv, sizeof(rv), NULL);
-		}
-	ZEND_DOFOREACH_END();
+    ZEND_HASH_FOREACH_KEY_VAL(source, idx, key, element){
+        php_yaconf_zval_persistent(element, &rv);
+        if (key) {
+            zend_hash_str_update(target, ZSTR_VAL(key), ZSTR_LEN(key), &rv);
+        } else {
+            zend_hash_index_update(target, idx, &rv, sizeof(rv), NULL);
+        }
+    } ZEND_HASH_FOREACH_END();
 } /* }}} */
 
 static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
@@ -143,7 +141,14 @@ static void php_yaconf_zval_persistent(zval *zv, zval *rv) /* {{{ */ {
 			{
                 zval *str;
                 str = (zval *)pemalloc(sizeof(zv), 1);
-				ZVAL_INTERNED_STR(rv, str);
+                str = (zval *)emalloc(sizeof(rv));
+				//ZVAL_INTERNED_STR(rv, str);
+                /**
+                 * zval * _z = (z);
+                 * zend_string * _s = (s);
+                 * Z_STR_P (_z) = _s;
+                 * Z_TYPE_INFO_P(_z) = IS_INTERNED_STRING_EX;
+                 */
 			}
 			break;
 		case IS_ARRAY:
@@ -183,10 +188,11 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 					return;
 				}
 				seg = php_strtok_r(NULL, ".", &ptr);
-				if (zend_symtable_find(Z_ARRVAL_P(target), real_key, strlen(real_key), (void **)&pzval) == FAILURE) {
+                char result = zend_symtable_find(Z_ARRVAL_P(target), real_key, strlen(real_key), (void **)&pzval);
+				if (result == FAILURE) {
 					if (seg) {
 						php_yaconf_hash_init(&rv, 8);
-						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)pzval);
+						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)&pzval);
 					} else {
 						php_yaconf_zval_persistent(value, &rv);
 						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), NULL);
@@ -197,15 +203,15 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 						free(pzval);
 						if (seg) {
 							php_yaconf_hash_init(&rv, 8);
-							zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)pzval);
+							zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)&pzval);
 						} else {
 							php_yaconf_zval_persistent(value, &rv);
-							zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)pzval);
+							zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)&pzval);
 						}
 					} else if (!seg) {
 						php_yaconf_hash_destroy(Z_ARRVAL_P(pzval));
 						php_yaconf_zval_persistent(value, &rv);
-						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)pzval);
+						zend_symtable_update(Z_ARRVAL_P(target), real_key, strlen(real_key), &rv, sizeof(rv), (void **)&pzval);
 					}
 				}
 				target = pzval;
@@ -234,17 +240,17 @@ static void php_yaconf_simple_parser_cb(zval *key, zval *value, zval *index, int
 						efree(skey);
 						return;
 					}
-					if (zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)value) == FAILURE) {
+					if (zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)&value) == FAILURE) {
 						php_yaconf_hash_init(&rv, 8);
-						zend_symtable_update(Z_ARRVAL_P(target), seg, strlen(seg), &rv, sizeof(rv), (void **)pzval);
+						zend_symtable_update(Z_ARRVAL_P(target), seg, strlen(seg), &rv, sizeof(rv), (void **)&pzval);
 					}
 					target = pzval;
 					seg = php_strtok_r(NULL, ".", &ptr);
 				} while (seg);
 			} else {
-				if (zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)value) == FAILURE) {
+				if (zend_symtable_find(Z_ARRVAL_P(target), seg, strlen(seg), (void **)&value) == FAILURE) {
 					php_yaconf_hash_init(&rv, 8);
-                    zend_symtable_update(Z_ARRVAL_P(target), seg, strlen(seg), &rv, sizeof(rv), (void **)pzval);
+                    zend_symtable_update(Z_ARRVAL_P(target), seg, strlen(seg), &rv, sizeof(rv), (void **)&pzval);
 				} 
 			}
 			efree(skey);
@@ -313,7 +319,7 @@ static void php_yaconf_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 				*(section--) = '\0';
 			}
 
-			if (zend_symtable_find(Z_ARRVAL_P(arr), seg, strlen(seg), (void **)parent) == SUCCESS) {
+			if (zend_symtable_find(Z_ARRVAL_P(arr), seg, strlen(seg), (void **)&parent) == SUCCESS) {
 				php_yaconf_hash_copy(Z_ARRVAL(active_ini_file_section), Z_ARRVAL_P(parent));
 			}
 		} 
@@ -505,12 +511,12 @@ PHP_MINIT_FUNCTION(yaconf)
 								continue;
 							}
 						}
-						zend_symtable_str_update(ini_containers, namelist[i]->d_name, p - namelist[i]->d_name, &result);
+						zend_symtable_update(ini_containers, namelist[i]->d_name, p - namelist[i]->d_name, &result,
+                                             sizeof(result), NULL);
 
-						//node.filename = zend_string_init(namelist[i]->d_name, strlen(namelist[i]->d_name), 1);
-						node.filename = namelist[i]->d_name;
+						node.filename = (char *)pemalloc(strlen(namelist[i]->d_name), 1);
 						node.mtime = sb.st_mtime;
-						zend_hash_update_mem(parsed_ini_files, node.filename, &node, sizeof(yaconf_filenode));
+						zend_hash_update(parsed_ini_files, node.filename, sizeof(node.filename), &node, sizeof(yaconf_filenode), NULL);
 					}
 				} else {
 					php_error(E_ERROR, "Could not stat '%s'", ini_file);
@@ -615,7 +621,7 @@ PHP_RINIT_FUNCTION(yaconf)
 							//n.filename = zend_string_init(namelist[i]->d_name, strlen(namelist[i]->d_name), 1);
 							n.filename = namelist[i]->d_name;
 							n.mtime = sb.st_mtime;
-							zend_hash_update_mem(parsed_ini_files, n.filename, &n, sizeof(yaconf_filenode));
+							zend_hash_update(parsed_ini_files, n.filename, sizeof(n.filename), &n, sizeof(yaconf_filenode), NULL);
 						}
 						free(namelist[i]);
 					}
